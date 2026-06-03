@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qahwa Loyalty — WhatsApp-Native Loyalty (MVP Prototype)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --ink: #e7eaf0;
+    --muted: #9aa3b2;
+    --brand: #6b4f3a;       /* coffee */
+    --brand-2: #c8a06a;     /* latte gold */
+    --wa: #25d366;          /* whatsapp green */
+    --wa-bg: #0b141a;
+    --wa-bubble: #005c4b;
+    --wa-bubble-in: #202c33;
+    --ok: #34c759;
+    --warn: #ffb020;
+    --danger: #ff5c5c;
+    --radius: 14px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2030 0%, var(--bg) 55%);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(15,17,21,.7);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
+  .logo .mark {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--brand-2), var(--brand));
+    display: grid; place-items: center; font-size: 16px;
+  }
+  .logo small { color: var(--muted); font-weight: 500; }
+  .seg {
+    margin-left: auto; display: inline-flex; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 12px; padding: 4px;
+    flex-wrap: wrap;
+  }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted);
+    padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: .15s;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button.active { background: var(--brand); color: #fff; }
+  .lang-toggle {
+    margin-left: 10px; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--ink); border-radius: 10px; padding: 8px 12px; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+
+  /* ---------- Layout ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 26px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 22px 60px;
+    align-items: start;
+  }
+  @media (max-width: 980px) { .stage { grid-template-columns: 1fr; } .phone-col { order: -1; } }
+
+  .surface { display: none; }
+  .surface.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px);} to {opacity:1; transform:none;} }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 18px; }
+  h2 { margin: 0 0 4px; font-size: 20px; }
+  h3 { margin: 0 0 14px; font-size: 15px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+  /* ---------- Device frame for PWA ---------- */
+  .device {
+    max-width: 420px; margin: 0 auto;
+    background: #0a0c10; border: 1px solid var(--line);
+    border-radius: 28px; padding: 14px; box-shadow: var(--shadow);
+  }
+  .device .screen {
+    background: var(--panel); border-radius: 18px; overflow: hidden; min-height: 560px;
+    display: flex; flex-direction: column;
+  }
+  .appbar {
+    background: linear-gradient(135deg, var(--brand), #4f3a2a);
+    padding: 16px 18px; display: flex; align-items: center; gap: 10px;
+  }
+  .appbar .cafe { font-weight: 700; }
+  .appbar .pill { margin-left: auto; font-size: 11px; background: rgba(255,255,255,.15); padding: 4px 9px; border-radius: 20px; }
+  .appbody { padding: 18px; flex: 1; }
+
+  /* ---------- Inputs / buttons ---------- */
+  label { font-size: 12px; color: var(--muted); display: block; margin: 0 0 6px; font-weight: 600; }
+  input[type=text], input[type=tel], input[type=number], select {
+    width: 100%; padding: 12px 13px; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--ink); border-radius: 11px; font-size: 15px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--brand-2); }
+  .btn {
+    border: 0; border-radius: 12px; padding: 13px 16px; font-size: 15px; font-weight: 700;
+    cursor: pointer; width: 100%; transition: .15s; color: #fff;
+    background: var(--brand);
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(1px); }
+  .btn.gold { background: linear-gradient(135deg, var(--brand-2), #a87f48); color: #1b140b; }
+  .btn.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); }
+  .btn.green { background: var(--wa); color: #04130a; }
+  .btn.danger { background: var(--danger); }
+  .btn.sm { padding: 8px 12px; font-size: 13px; width: auto; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+
+  /* ---------- PIN pad ---------- */
+  .pin-display { display: flex; gap: 12px; justify-content: center; margin: 8px 0 22px; }
+  .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); }
+  .pin-dot.filled { background: var(--brand-2); border-color: var(--brand-2); }
+  .pinpad { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .pinpad button {
+    aspect-ratio: 1.4; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--ink); font-size: 22px; font-weight: 600; cursor: pointer;
+  }
+  .pinpad button:hover { background: #262b36; }
+  .who { text-align: center; margin-bottom: 4px; }
+
+  /* ---------- Stamp grid ---------- */
+  .stampgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 16px 0; }
+  .stamp {
+    aspect-ratio: 1; border-radius: 50%; border: 2px dashed var(--line);
+    display: grid; place-items: center; font-size: 22px; color: var(--muted);
+    background: var(--panel-2); transition: .2s;
+  }
+  .stamp.filled { border-style: solid; border-color: var(--brand-2); background: rgba(200,160,106,.12); color: var(--brand-2); }
+  .progress-line { display: flex; align-items: baseline; justify-content: space-between; }
+  .progress-line b { font-size: 26px; }
+  .reward-banner {
+    background: linear-gradient(135deg, rgba(52,199,89,.18), rgba(52,199,89,.06));
+    border: 1px solid rgba(52,199,89,.4); border-radius: 12px; padding: 14px; margin: 14px 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .reward-banner .ic { font-size: 26px; }
+
+  /* ---------- Tables / stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  @media (max-width: 720px){ .stats { grid-template-columns: repeat(2,1fr);} }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .stat .n { font-size: 30px; font-weight: 800; }
+  .stat .l { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .stat .d { font-size: 11px; margin-top: 6px; }
+  .up { color: var(--ok); } .down { color: var(--danger); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  td .tag { font-size: 11px; padding: 3px 8px; border-radius: 20px; }
+  .tag.stamp-t { background: rgba(200,160,106,.16); color: var(--brand-2); }
+  .tag.redeem-t { background: rgba(52,199,89,.16); color: var(--ok); }
+  .tag.enrol-t { background: rgba(90,160,255,.16); color: #6ba8ff; }
+
+  /* ---------- Staff chips ---------- */
+  .stafflist { display: flex; flex-direction: column; gap: 8px; }
+  .staffrow {
+    display: flex; align-items: center; gap: 12px; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand); display: grid; place-items: center; font-weight: 700; }
+  .staffrow .role { font-size: 11px; color: var(--muted); }
+  .staffrow .x { margin-left: auto; }
+
+  /* ---------- WhatsApp phone ---------- */
+  .phone-col { position: sticky; top: 90px; }
+  .phone {
+    background: #000; border-radius: 38px; padding: 12px; box-shadow: var(--shadow);
+    border: 1px solid #2a2f3a;
+  }
+  .phone .notch { height: 22px; display: grid; place-items: center; }
+  .phone .notch::before { content:""; width: 120px; height: 7px; background:#000; border-radius: 10px; display:block;}
+  .wa { background: var(--wa-bg); border-radius: 26px; overflow: hidden; display: flex; flex-direction: column; height: 620px; }
+  .wa-head {
+    background: #202c33; padding: 12px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #0b141a;
+  }
+  .wa-head .ava { width: 38px; height: 38px; border-radius: 50%; background: var(--brand); display:grid; place-items:center; font-weight:700; }
+  .wa-head .nm { font-weight: 600; font-size: 14px; }
+  .wa-head .st { font-size: 11px; color: var(--wa); }
+  .wa-body {
+    flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+    background-image: linear-gradient(rgba(11,20,26,.96), rgba(11,20,26,.96));
+  }
+  .msg {
+    max-width: 82%; padding: 8px 11px; border-radius: 10px; font-size: 13px; line-height: 1.45;
+    position: relative; white-space: pre-wrap; word-wrap: break-word;
+  }
+  .msg .t { font-size: 9.5px; color: rgba(255,255,255,.5); display:block; text-align: right; margin-top: 3px; }
+  .msg.in { background: var(--wa-bubble-in); align-self: flex-start; border-top-left-radius: 2px; }
+  .msg.out { background: var(--wa-bubble); align-self: flex-end; border-top-right-radius: 2px; }
+  .msg .cafe-name { color: var(--brand-2); font-weight: 700; font-size: 11px; display:block; margin-bottom: 2px;}
+  .wa-input {
+    padding: 10px 12px; background: #0b141a; display: flex; gap: 8px; align-items: center;
+  }
+  .wa-input .fake { flex:1; background:#202c33; color:var(--muted); border-radius:20px; padding:9px 14px; font-size:12px;}
+  .wa-input .send { width: 38px; height: 38px; border-radius:50%; background: var(--wa); display:grid; place-items:center; }
+  .phone-cap { text-align:center; color: var(--muted); font-size: 11px; margin-top: 10px; }
+
+  /* QR enrolment */
+  .qr-wrap { text-align:center; padding: 10px; }
+  .qr {
+    width: 180px; height: 180px; margin: 10px auto; background: #fff; border-radius: 14px; padding: 12px;
+    display: grid; place-items: center;
+  }
+  .qr img { width: 100%; image-rendering: pixelated; }
+
+  .note { font-size: 12px; color: var(--muted); border-left: 2px solid var(--brand); padding-left: 10px; margin-top: 14px; }
+  .toast {
+    position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ok); color: #04130a; padding: 12px 20px; border-radius: 12px; font-weight: 700;
+    opacity: 0; transition: .3s; z-index: 100; box-shadow: var(--shadow); pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hint { display:inline-block; background: var(--panel-2); border:1px solid var(--line); border-radius: 8px; padding:2px 7px; font-size:11px; color: var(--muted); }
+  .divider { height:1px; background: var(--line); margin: 16px 0; }
+  .flex-between { display:flex; align-items:center; justify-content: space-between; gap: 10px; }
+  .muted { color: var(--muted); }
+  .bilingual { direction: rtl; text-align: right; font-size: 12.5px; opacity: .92; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <span class="mark">☕</span>
+    <div>Qahwa Loyalty <small>· MVP prototype</small></div>
+  </div>
+  <div class="seg" id="nav">
+    <button data-surface="enrol" class="active">📲 Customer Join</button>
+    <button data-surface="staff">🧾 Staff PWA</button>
+    <button data-surface="owner">📊 Owner</button>
+    <button data-surface="admin">🛠 Founder Admin</button>
+  </div>
+  <button class="lang-toggle" id="langBtn" title="Toggle message language">EN / ع</button>
+</div>
+
+<div class="stage">
+  <!-- ============== LEFT: SURFACES ============== -->
+  <div>
+
+    <!-- ===== CUSTOMER JOIN (QR) ===== -->
+    <section class="surface active" id="s-enrol">
+      <div class="card">
+        <h2>Counter QR — customer self-enrolment</h2>
+        <p class="sub">The café prints this and puts it on the counter. The customer scans it, WhatsApp opens with a pre-filled message, and <b>sending it</b> opts them in and hands the café their verified number. No app, no form.</p>
+        <div class="qr-wrap">
+          <div class="qr"><img alt="QR code" id="qrImg" /></div>
+          <p style="margin:4px 0;font-weight:700">Scan to join <span style="color:var(--brand-2)">Flat White Café</span></p>
+          <p class="muted" style="font-size:12px;margin:0">امسح للانضمام إلى بطاقة الولاء</p>
+        </div>
+        <div class="divider"></div>
+        <p class="sub" style="margin-bottom:10px">Simulate a customer scanning + sending the pre-filled WhatsApp message:</p>
+        <label>Customer phone number</label>
+        <div class="row">
+          <input type="tel" id="enrolPhone" value="+974 5512 8830" />
+          <button class="btn green sm" style="flex:0 0 auto;padding:12px 18px" onclick="simulateScan()">Send "Join" ▸</button>
+        </div>
+        <label style="margin-top:12px">First name (optional)</label>
+        <input type="text" id="enrolName" placeholder="e.g. Sara" value="Sara" />
+        <div class="note">Privacy by design: only phone + optional first name is collected. A <span class="hint">consent_log</span> row is written with timestamp, method = <i>click-to-WhatsApp</i>, and café scope. This enrolment is invisible to every other café.</div>
+      </div>
+    </section>
+
+    <!-- ===== STAFF PWA ===== -->
+    <section class="surface" id="s-staff">
+      <div class="device">
+        <div class="screen">
+          <div class="appbar">
+            <span>☕</span>
+            <div class="cafe">Flat White Café</div>
+            <span class="pill" id="staffPill">Tap PIN to act</span>
+          </div>
+          <div class="appbody" id="staffBody"><!-- injected --></div>
+        </div>
+      </div>
+      <p class="phone-cap">Always-logged-in PWA on the shared counter device · staff identify per-action via 4-digit PIN</p>
+    </section>
+
+    <!-- ===== OWNER DASHBOARD ===== -->
+    <section class="surface" id="s-owner">
+      <div class="card" id="ownerGate">
+        <h2>Owner dashboard</h2>
+        <p class="sub">Owner-only data is PIN-gated so staff can't see business metrics. Enter the owner PIN to continue.</p>
+        <label>Owner PIN (try <b>4000</b>)</label>
+        <div class="row">
+          <input type="tel" id="ownerPin" maxlength="4" placeholder="••••" />
+          <button class="btn gold sm" style="flex:0 0 auto;padding:12px 20px" onclick="ownerLogin()">Unlock</button>
+        </div>
+      </div>
+
+      <div id="ownerDash" style="display:none">
+        <div class="card">
+          <div class="flex-between">
+            <div><h2 style="margin:0">Flat White Café</h2><p class="sub" style="margin:2px 0 0">This period · last 30 days</p></div>
+            <button class="btn ghost sm" onclick="lockOwner()">Lock</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stats">
+            <div class="stat"><div class="n" id="stActive">128</div><div class="l">Active members</div><div class="d up">▲ 18 this period</div></div>
+            <div class="stat"><div class="n" id="stStamps">642</div><div class="l">Stamps issued</div><div class="d up">▲ 12%</div></div>
+            <div class="stat"><div class="n" id="stRedeem">37</div><div class="l">Rewards redeemed</div><div class="d up">▲ 6</div></div>
+            <div class="stat"><div class="n">61%</div><div class="l">Returning customers</div><div class="d up">▲ repeat-visit signal</div></div>
+          </div>
+          <p class="note">"Returning customers" is the signal that proves loyalty drives repeat visits — the owner's core question.</p>
+        </div>
+
+        <div class="card">
+          <h3>Per-staff activity log</h3>
+          <p class="sub" style="margin-top:-8px">Every stamp & redemption is attributed — the owner's anti-fraud control against staff giving away free product.</p>
+          <table>
+            <thead><tr><th>Time</th><th>Staff</th><th>Action</th><th>Customer</th></tr></thead>
+            <tbody id="ownerLog"><!-- injected --></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Staff management</h3>
+          <div class="stafflist" id="staffMgmt"></div>
+          <div class="divider"></div>
+          <div class="row">
+            <input type="text" id="newStaffName" placeholder="New staff name" />
+            <input type="tel" id="newStaffPin" maxlength="4" placeholder="4-digit PIN" style="flex:0 0 130px"/>
+            <button class="btn sm" style="flex:0 0 auto;padding:12px 16px" onclick="addStaff()">Add</button>
+          </div>
+          <p class="note">Owner adds/removes staff & PINs directly — handles staff churn without IT help.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FOUNDER ADMIN (platform-wide) ===== -->
+    <section class="surface" id="s-admin">
+      <div class="card">
+        <div class="flex-between">
+          <div>
+            <h2 style="margin:0">Founder admin · platform</h2>
+            <p class="sub" style="margin:2px 0 0">The only surface that sees across all cafés. Hand-onboard pilots, manage manual billing, honour PDPPL erasure.</p>
+          </div>
+          <div class="seg" id="adminTabs">
+            <button data-atab="biz" class="active">Cafés</button>
+            <button data-atab="people">People · PDPPL</button>
+            <button data-atab="audit">Audit log</button>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:18px">
+          <div class="stat"><div class="n" id="pBiz">3</div><div class="l">Pilot cafés</div><div class="d up">2 active · 1 suspended</div></div>
+          <div class="stat"><div class="n" id="pMembers">281</div><div class="l">People (platform)</div><div class="d">deduplicated by phone</div></div>
+          <div class="stat"><div class="n">1,940</div><div class="l">Messages this month</div><div class="d warn">~QAR shared-number cost</div></div>
+          <div class="stat"><div class="n up">0.8%</div><div class="l">Opt-out rate</div><div class="d up">guardrail — healthy</div></div>
+        </div>
+      </div>
+
+      <!-- ----- TAB: BUSINESSES ----- -->
+      <div id="atab-biz">
+        <div class="card">
+          <div class="flex-between">
+            <h3 style="margin:0">Pilot cafés</h3>
+            <button class="btn gold sm" style="padding:8px 14px" onclick="openNewBiz()">+ Onboard café</button>
+          </div>
+          <table style="margin-top:14px">
+            <thead><tr><th>Café</th><th>Campaign</th><th>Members</th><th>Billing</th><th></th></tr></thead>
+            <tbody id="bizTable"></tbody>
+          </table>
+          <p class="note">Manual billing per the MVP: each business carries an <span class="hint">active</span> flag. Suspending stops the café's staff PWA &amp; outbound messaging without an automated gateway.</p>
+        </div>
+
+        <!-- inline editor / onboarding panel -->
+        <div class="card" id="bizEditor" style="display:none">
+          <div class="flex-between">
+            <h3 style="margin:0" id="bizEditorTitle">Onboard café</h3>
+            <button class="btn ghost sm" onclick="closeBiz()">Close</button>
+          </div>
+          <h3 style="margin-top:14px">1 · Business</h3>
+          <label>Café name (appears in every customer message)</label>
+          <input type="text" id="bizName" value="" placeholder="e.g. Flat White Café" />
+          <div class="row" style="margin-top:12px">
+            <div><label>Card colour</label>
+              <select id="bizColour"><option>Coffee brown</option><option>Latte gold</option><option>Emerald</option></select>
+            </div>
+            <div><label>Billing status</label>
+              <select id="bizStatus"><option>Active</option><option>Suspended</option></select>
+            </div>
+          </div>
+
+          <h3 style="margin-top:22px">2 · Campaign (punch card)</h3>
+          <div class="row">
+            <div><label>Stamps required (N)</label><input type="number" id="cfgN" value="9" min="2" max="20"/></div>
+            <div><label>Per-transaction cap</label><input type="number" id="cfgCap" value="3" min="1" max="10"/></div>
+          </div>
+          <label style="margin-top:12px">Reward description</label>
+          <input type="text" id="cfgReward" value="1 free coffee" />
+          <div class="note">Campaigns are versioned: editing N applies to <i>new</i> cards; in-flight cards keep the terms they were created under.</div>
+
+          <div class="row" style="margin-top:18px">
+            <button class="btn gold" onclick="saveBiz()">Save business &amp; campaign</button>
+            <button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" onclick="showQR()">Print enrolment QR</button>
+          </div>
+        </div>
+
+        <!-- printable QR -->
+        <div class="card" id="qrPanel" style="display:none">
+          <div class="flex-between"><h3 style="margin:0">Printable counter QR</h3><button class="btn ghost sm" onclick="$('#qrPanel').style.display='none'">Close</button></div>
+          <div class="qr-wrap">
+            <div class="qr"><img alt="QR code" id="adminQrImg" /></div>
+            <p style="margin:4px 0;font-weight:700">Scan to join <span style="color:var(--brand-2)" id="qrCafeName">—</span></p>
+            <p class="muted" style="font-size:12px;margin:0">امسح للانضمام إلى بطاقة الولاء</p>
+            <button class="btn sm" style="margin-top:12px;padding:8px 16px" onclick="toast('Sent to printer (mock)')">🖨 Print</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ----- TAB: PEOPLE / PDPPL ----- -->
+      <div id="atab-people" style="display:none">
+        <div class="card">
+          <h3>Person lookup · PDPPL erasure</h3>
+          <p class="sub" style="margin-top:-8px">A <b>person</b> is one row per phone, platform-global. The café never sees this — only the founder can, to honour deletion/anonymisation requests.</p>
+          <label>Search by phone number</label>
+          <div class="row">
+            <input type="tel" id="personSearch" value="+974 5512 8830" />
+            <button class="btn sm" style="flex:0 0 auto;padding:12px 18px" onclick="searchPerson()">Search</button>
+          </div>
+          <div id="personResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+
+      <!-- ----- TAB: AUDIT LOG ----- -->
+      <div id="atab-audit" style="display:none">
+        <div class="card">
+          <h3>Consent &amp; message audit log</h3>
+          <p class="sub" style="margin-top:-8px">Proof for Meta &amp; the regulator: every opt-in (timestamp, method, café scope) and every template dispatched.</p>
+          <table>
+            <thead><tr><th>Time</th><th>Event</th><th>Café scope</th><th>Detail</th></tr></thead>
+            <tbody id="auditTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============== RIGHT: WHATSAPP PHONE ============== -->
+  <div class="phone-col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="wa">
+        <div class="wa-head">
+          <div class="ava">☕</div>
+          <div>
+            <div class="nm">Qahwa Loyalty</div>
+            <div class="st">business account · online</div>
+          </div>
+        </div>
+        <div class="wa-body" id="waBody"></div>
+        <div class="wa-input">
+          <div class="fake">Reply STOP to opt out…</div>
+          <div class="send">➤</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-cap">Customer's WhatsApp — the only customer surface.<br>Reacts live to staff actions on the left.</p>
+    <button class="btn ghost sm" style="width:100%;margin-top:10px" onclick="customerStop()">Simulate customer replies "STOP"</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====================== MOCK STATE ====================== */
+const state = {
+  lang: 'en',                 // 'en' | 'ar'  -> controls message body language
+  cafe: 'Flat White Café',
+  reward: '1 free coffee',
+  N: 9,
+  cap: 3,
+  enrolled: false,
+  optedOut: false,
+  customer: { phone: '+974 5512 8830', name: 'Sara' },
+  stamps: 0,
+  rewardAvailable: false,
+  activePin: null,            // staff acting
+  staff: [
+    { name: 'Layla', pin: '1010', role: 'staff' },
+    { name: 'Omar',  pin: '2020', role: 'staff' },
+    { name: 'Maya (Owner)', pin: '4000', role: 'owner' },
+  ],
+  log: [
+    { t: '09:14', staff: 'Layla', action: 'stamp',  cust: '••28' },
+    { t: '09:02', staff: 'Omar',  action: 'redeem', cust: '••71' },
+    { t: '08:51', staff: 'Layla', action: 'stamp',  cust: '••05' },
+  ],
+  // ---- platform / founder-admin data (multi-tenant) ----
+  businesses: [
+    { id:1, name:'Flat White Café',  N:9,  cap:3, reward:'1 free coffee',    members:128, active:true,  editable:true },
+    { id:2, name:'Souq Roasters',    N:10, cap:2, reward:'free pastry',      members:96,  active:true,  editable:false },
+    { id:3, name:'Pearl Espresso',   N:8,  cap:3, reward:'free flat white',  members:57,  active:false, editable:false },
+  ],
+  editingBizId: null,
+  audit: [
+    { t:'09:14', ev:'opt-in',          scope:'Flat White Café', detail:'method: click-to-WhatsApp · ••28' },
+    { t:'09:11', ev:'template-sent',   scope:'Flat White Café', detail:'stamp_progress (AR+EN) · ••28' },
+    { t:'09:02', ev:'template-sent',   scope:'Souq Roasters',   detail:'reward_redeemed (AR+EN) · ••71' },
+    { t:'08:40', ev:'opt-out (STOP)',  scope:'Pearl Espresso',  detail:'messaging suppressed · ••13' },
+  ],
+};
+
+/* ====================== HELPERS ====================== */
+const $ = s => document.querySelector(s);
+const now = () => new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ---- QR (tiny inline generator via api fallback to drawn pattern) ---- */
+function makeQR(){
+  // Deterministic faux-QR drawn as SVG (no network dependency)
+  const size = 21, cells = [];
+  let seed = 7;
+  const rnd = () => (seed = (seed*1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  let rects = '';
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    const finder = (x<7&&y<7)||(x>=size-7&&y<7)||(x<7&&y>=size-7);
+    const on = finder ? ((x===0||x===6||y===0||y===6||(x>1&&x<5&&y>1&&y<5))||(x>=size-7&&(x===size-7||x===size-1||y===0||y===6||(x>size-6&&x<size-2&&y>1&&y<5)))||(y>=size-7&&(y===size-7||y===size-1||x===0||x===6||(y>size-6&&y<size-2&&x>1&&x<5)))) : rnd()>0.55;
+    if(on) rects += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#0f1115">${rects}</g></svg>`;
+  const src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  const a = $('#qrImg'); if(a) a.src = src;
+  const b = $('#adminQrImg'); if(b) b.src = src;
+}
+
+/* ====================== WHATSAPP RENDER ====================== */
+let waMessages = [];
+function pushMsg(dir, body, bilingual){
+  waMessages.push({ dir, body, bilingual, t: now() });
+  renderWA();
+}
+function renderWA(){
+  const b = $('#waBody');
+  b.innerHTML = waMessages.map(m => {
+    if(m.dir === 'in') return `<div class="msg in">${m.body}<span class="t">${m.t}</span></div>`;
+    const cafe = `<span class="cafe-name">${state.cafe}</span>`;
+    const bi = m.bilingual ? `<div class="bilingual">${m.bilingual}</div>` : '';
+    return `<div class="msg out">${cafe}${m.body}${bi}<span class="t">${m.t} ✓✓</span></div>`;
+  }).join('');
+  b.scrollTop = b.scrollHeight;
+}
+
+/* Templates — bilingual; state.lang picks which is primary (we show both, ordering by lang) */
+function tplStamp(){
+  const en = `Thanks! You're at ${state.stamps}/${state.N} ☕ — ${state.N-state.stamps} more for ${state.reward}.`;
+  const ar = `شكراً! رصيدك ${state.stamps}/${state.N} ☕ — باقي ${state.N-state.stamps} للحصول على ${state.reward}.`;
+  return state.lang==='ar' ? {body: ar.replace(/^/, ''), bilingual: en} : {body: en, bilingual: ar};
+}
+function tplReward(){
+  const en = `🎉 Reward unlocked! Show this at the counter to claim your ${state.reward}.`;
+  const ar = `🎉 لقد ربحت مكافأة! أظهر هذه الرسالة عند الكاشير للحصول على ${state.reward}.`;
+  return state.lang==='ar' ? {body: ar, bilingual: en} : {body: en, bilingual: ar};
+}
+function tplRedeem(){
+  const en = `✅ Reward redeemed: ${state.reward}. Your card now shows ${state.stamps}/${state.N}. Keep this as your receipt.`;
+  const ar = `✅ تم استخدام المكافأة: ${state.reward}. رصيدك الآن ${state.stamps}/${state.N}. احتفظ بهذه الرسالة كإيصال.`;
+  return state.lang==='ar' ? {body: ar, bilingual: en} : {body: en, bilingual: ar};
+}
+function tplWelcome(){
+  const en = `Welcome${state.customer.name? ', '+state.customer.name:''}! You've joined our loyalty card. Collect ${state.N} stamps for ${state.reward}. Reply STOP anytime to opt out.`;
+  const ar = `أهلاً${state.customer.name? ' '+state.customer.name:''}! لقد انضممت إلى بطاقة الولاء. اجمع ${state.N} أختام للحصول على ${state.reward}. أرسل STOP للإلغاء.`;
+  return state.lang==='ar' ? {body: ar, bilingual: en} : {body: en, bilingual: ar};
+}
+
+function sendIfConsented(tpl){
+  if(state.optedOut){
+    toast('Suppressed — customer is opted out');
+    return false;
+  }
+  pushMsg('out', tpl.body, tpl.bilingual);
+  return true;
+}
+
+/* ====================== ENROLMENT ====================== */
+function simulateScan(){
+  state.customer.phone = $('#enrolPhone').value || state.customer.phone;
+  state.customer.name  = $('#enrolName').value.trim();
+  state.optedOut = false;
+  // customer sends pre-filled inbound message
+  pushMsg('in', `Join Flat White Café loyalty 🤝`);
+  state.enrolled = true;
+  setTimeout(()=>{ sendIfConsented(tplWelcome()); }, 500);
+  toast('Enrolled ✓ consent logged');
+  renderStaff();
+}
+
+function customerStop(){
+  if(!state.enrolled){ toast('No enrolment yet'); return; }
+  pushMsg('in', 'STOP');
+  state.optedOut = true;
+  setTimeout(()=> pushMsg('out', state.lang==='ar' ? 'تم إلغاء الاشتراك. لن تصلك رسائل بعد الآن.' : "You've been unsubscribed. You won't receive further messages."), 400);
+  toast('Opt-out recorded — messaging suppressed');
+  renderStaff();
+}
+
+/* ====================== STAFF PWA ====================== */
+let pinBuffer = '';
+function renderStaff(){
+  const body = $('#staffBody');
+  if(!state.activePin){
+    // PIN screen
+    $('#staffPill').textContent = 'Locked';
+    body.innerHTML = `
+      <p class="who muted" style="font-size:13px">Enter your 4-digit PIN to act</p>
+      <p class="who muted" style="font-size:11px;margin-top:-6px">try Layla <b>1010</b> · Omar <b>2020</b></p>
+      <div class="pin-display" id="pinDisplay"></div>
+      <div class="pinpad">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="pin('${n}')">${n}</button>`).join('')}
+        <button onclick="pin('clear')">✕</button>
+        <button onclick="pin('0')">0</button>
+        <button onclick="pin('back')">⌫</button>
+      </div>`;
+    renderPinDots();
+    return;
+  }
+  // Acting as staff
+  const who = state.staff.find(s=>s.pin===state.activePin);
+  $('#staffPill').textContent = who ? who.name : 'Acting';
+
+  if(!state.enrolled){
+    body.innerHTML = `
+      <p class="muted" style="font-size:13px">Look up a customer by phone</p>
+      <label>Phone number</label>
+      <input type="tel" id="lookupPhone" value="${state.customer.phone}" />
+      <button class="btn" style="margin-top:12px" onclick="lookup()">Find customer</button>
+      <div class="divider"></div>
+      <p class="muted" style="font-size:12px">Not enrolled yet? Manual fallback:</p>
+      <button class="btn ghost" onclick="manualEnrol()">Enrol this number manually</button>
+      <button class="btn ghost" style="margin-top:18px" onclick="logoutStaff()">Switch staff</button>`;
+    return;
+  }
+
+  // Customer card view
+  const stampsHtml = Array.from({length: state.N}, (_,i)=>
+    `<div class="stamp ${i<state.stamps?'filled':''}">${i<state.stamps?'☕':''}</div>`).join('');
+  const rewardBanner = state.rewardAvailable ? `
+      <div class="reward-banner">
+        <span class="ic">🎁</span>
+        <div><b>Reward available</b><div class="muted" style="font-size:12px">${state.reward}</div></div>
+      </div>` : '';
+  body.innerHTML = `
+    <div class="flex-between">
+      <div>
+        <b>${state.customer.name||'Customer'}</b>
+        <div class="muted" style="font-size:12px">${state.customer.phone}</div>
+      </div>
+      <span class="hint">${state.optedOut?'opted out':'active'}</span>
+    </div>
+    <div class="progress-line" style="margin-top:14px">
+      <span class="muted" style="font-size:13px">Progress</span>
+      <span><b>${state.stamps}</b><span class="muted">/${state.N}</span></span>
+    </div>
+    <div class="stampgrid">${stampsHtml}</div>
+    ${rewardBanner}
+    <div class="row">
+      <button class="btn" onclick="addStamp(1)">+1 stamp</button>
+      <button class="btn ghost" onclick="addStamp(state.cap)" style="flex:0 0 auto;padding:13px 14px">+${state.cap} (cap)</button>
+    </div>
+    <button class="btn green" style="margin-top:10px;${state.rewardAvailable?'':'display:none'}" onclick="redeem()">Redeem reward</button>
+    <button class="btn ghost" style="margin-top:18px" onclick="logoutStaff()">Done · switch staff</button>`;
+}
+function renderPinDots(){
+  const d = $('#pinDisplay'); if(!d) return;
+  d.innerHTML = [0,1,2,3].map(i=>`<div class="pin-dot ${i<pinBuffer.length?'filled':''}"></div>`).join('');
+}
+function pin(k){
+  if(k==='clear') pinBuffer='';
+  else if(k==='back') pinBuffer=pinBuffer.slice(0,-1);
+  else if(pinBuffer.length<4) pinBuffer+=k;
+  renderPinDots();
+  if(pinBuffer.length===4){
+    const match = state.staff.find(s=>s.pin===pinBuffer);
+    if(match){ state.activePin = pinBuffer; pinBuffer=''; renderStaff(); toast('Acting as '+match.name); }
+    else { toast('Unknown PIN'); pinBuffer=''; setTimeout(renderPinDots,200); }
+  }
+}
+function logoutStaff(){ state.activePin=null; pinBuffer=''; renderStaff(); }
+function lookup(){
+  state.customer.phone = $('#lookupPhone').value;
+  if(!state.enrolled){ toast('No card found — use manual enrol'); return; }
+  renderStaff();
+}
+function manualEnrol(){
+  state.enrolled = true; state.optedOut=false;
+  sendIfConsented(tplWelcome());
+  toast('Manually enrolled ✓');
+  renderStaff();
+}
+
+function logAction(action){
+  const who = state.staff.find(s=>s.pin===state.activePin);
+  state.log.unshift({ t: now(), staff: who?who.name:'—', action, cust: '••'+state.customer.phone.slice(-2) });
+  if(state.log.length>12) state.log.pop();
+}
+
+function addStamp(qty){
+  qty = Math.min(qty, state.cap);
+  if(state.rewardAvailable){ toast('Redeem the pending reward first'); return; }
+  state.stamps += qty;
+  let earned = false;
+  if(state.stamps >= state.N){ state.rewardAvailable = true; earned = true; }
+  logAction('stamp');
+  sendIfConsented(tplStamp());
+  if(earned) setTimeout(()=> sendIfConsented(tplReward()), 600);
+  renderStaff(); renderOwnerLog();
+  toast(qty>1?`+${qty} stamps`:'+1 stamp');
+}
+function redeem(){
+  if(!state.rewardAvailable) return;
+  // deduct threshold, carry remainder (idempotent: clear flag immediately)
+  state.stamps = state.stamps - state.N;   // carry-over remainder
+  state.rewardAvailable = false;
+  logAction('redeem');
+  sendIfConsented(tplRedeem());
+  renderStaff(); renderOwnerLog();
+  toast('Redeemed ✓ remainder carried');
+}
+
+/* ====================== OWNER ====================== */
+function ownerLogin(){
+  const v = $('#ownerPin').value;
+  const o = state.staff.find(s=>s.pin===v && s.role==='owner');
+  if(o){ $('#ownerGate').style.display='none'; $('#ownerDash').style.display='block'; renderOwnerLog(); renderStaffMgmt(); }
+  else toast('Owner PIN required (try 4000)');
+}
+function lockOwner(){ $('#ownerGate').style.display='block'; $('#ownerDash').style.display='none'; $('#ownerPin').value=''; }
+function renderOwnerLog(){
+  const tb = $('#ownerLog'); if(!tb) return;
+  const tagClass = a => a==='stamp'?'stamp-t':a==='redeem'?'redeem-t':'enrol-t';
+  tb.innerHTML = state.log.map(r=>`
+    <tr><td>${r.t}</td><td>${r.staff}</td>
+    <td><span class="tag ${tagClass(r.action)}">${r.action}</span></td>
+    <td class="muted">${r.cust}</td></tr>`).join('');
+}
+function renderStaffMgmt(){
+  const c = $('#staffMgmt'); if(!c) return;
+  c.innerHTML = state.staff.map((s,i)=>`
+    <div class="staffrow">
+      <div class="avatar">${s.name[0]}</div>
+      <div><div>${s.name}</div><div class="role">PIN ••${s.pin.slice(-2)} · ${s.role}</div></div>
+      ${s.role!=='owner'?`<button class="btn danger sm x" onclick="removeStaff(${i})">Remove</button>`:''}
+    </div>`).join('');
+}
+function addStaff(){
+  const name=$('#newStaffName').value.trim(), pin=$('#newStaffPin').value.trim();
+  if(!name||pin.length!==4){ toast('Need name + 4-digit PIN'); return; }
+  state.staff.push({name, pin, role:'staff'});
+  $('#newStaffName').value=''; $('#newStaffPin').value='';
+  renderStaffMgmt(); toast('Staff added');
+}
+function removeStaff(i){ state.staff.splice(i,1); renderStaffMgmt(); toast('Staff removed'); }
+
+/* ====================== FOUNDER ADMIN (platform) ====================== */
+function renderBizTable(){
+  const tb = $('#bizTable'); if(!tb) return;
+  tb.innerHTML = state.businesses.map(b=>`
+    <tr>
+      <td><b>${b.name}</b>${b.editable?' <span class="hint">live demo café</span>':''}</td>
+      <td class="muted">${b.N} stamps → ${b.reward}<br><span style="font-size:11px">cap ${b.cap}/txn</span></td>
+      <td>${b.members}</td>
+      <td><span class="tag ${b.active?'redeem-t':'stamp-t'}" style="cursor:pointer" onclick="toggleBiz(${b.id})">${b.active?'● active':'○ suspended'}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" style="padding:6px 10px" onclick="editBiz(${b.id})">Edit</button>
+        <button class="btn ghost sm" style="padding:6px 10px" onclick="editBiz(${b.id});showQR()">QR</button>
+      </td>
+    </tr>`).join('');
+  $('#pBiz').textContent = state.businesses.length;
+  const active = state.businesses.filter(b=>b.active).length;
+  $('#pBiz').nextElementSibling.nextElementSibling.textContent = `${active} active · ${state.businesses.length-active} suspended`;
+}
+function toggleBiz(id){
+  const b = state.businesses.find(x=>x.id===id); b.active = !b.active;
+  if(b.editable && !b.active){ toast(b.name+' suspended — PWA & messaging off'); }
+  else toast(b.name+(b.active?' reactivated':' suspended'));
+  renderBizTable();
+}
+function openNewBiz(){
+  state.editingBizId = null;
+  $('#bizEditorTitle').textContent = 'Onboard new café';
+  $('#bizName').value=''; $('#cfgN').value=9; $('#cfgCap').value=3; $('#cfgReward').value='1 free coffee';
+  $('#bizStatus').value='Active';
+  $('#bizEditor').style.display='block'; $('#qrPanel').style.display='none';
+  $('#bizEditor').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function editBiz(id){
+  const b = state.businesses.find(x=>x.id===id);
+  state.editingBizId = id;
+  $('#bizEditorTitle').textContent = 'Edit · '+b.name;
+  $('#bizName').value=b.name; $('#cfgN').value=b.N; $('#cfgCap').value=b.cap; $('#cfgReward').value=b.reward;
+  $('#bizStatus').value=b.active?'Active':'Suspended';
+  $('#bizEditor').style.display='block';
+  $('#bizEditor').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function closeBiz(){ $('#bizEditor').style.display='none'; $('#qrPanel').style.display='none'; }
+function saveBiz(){
+  const name=$('#bizName').value.trim(); if(!name){ toast('Café name required'); return; }
+  const N=parseInt($('#cfgN').value)||9, cap=parseInt($('#cfgCap').value)||3, reward=$('#cfgReward').value||'1 free coffee';
+  const active=$('#bizStatus').value==='Active';
+  let b;
+  if(state.editingBizId){
+    b = state.businesses.find(x=>x.id===state.editingBizId);
+    Object.assign(b, {name, N, cap, reward, active});
+    toast('Saved · '+name);
+  } else {
+    b = { id: Date.now(), name, N, cap, reward, active, members:0, editable:true };
+    state.businesses.push(b);
+    toast('Café onboarded ✓');
+  }
+  // If this is the live demo café, push config through to the other surfaces
+  if(b.editable){
+    state.cafe=name; state.N=N; state.cap=cap; state.reward=reward;
+    state.stamps=0; state.rewardAvailable=false;
+    document.querySelectorAll('.cafe').forEach(e=>e.textContent=name);
+    makeQR(); renderStaff(); renderWA();
+  }
+  renderBizTable();
+}
+function showQR(){
+  const name = $('#bizName').value || 'this café';
+  $('#qrCafeName').textContent = name;
+  makeQR();
+  $('#qrPanel').style.display='block';
+  $('#qrPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function searchPerson(){
+  const q = ($('#personSearch').value||'').replace(/\s/g,'');
+  const el = $('#personResult');
+  // mock: the demo customer's person record, cross-café (founder-only view)
+  const matchesDemo = q && state.customer.phone.replace(/\s/g,'').includes(q.slice(-6));
+  if(!matchesDemo){ el.innerHTML = `<p class="muted" style="font-size:13px">No person found for that number. (Try the demo customer ${state.customer.phone})</p>`; return; }
+  const enrols = [
+    { cafe: state.cafe, name: state.customer.name||'—', stamps: state.stamps, consent: state.optedOut?'opted out':'active' },
+    { cafe:'Souq Roasters', name:'Sara', stamps:4, consent:'active' },
+  ];
+  el.innerHTML = `
+    <div class="staffrow" style="align-items:flex-start">
+      <div class="avatar">${(state.customer.name||'?')[0]}</div>
+      <div style="flex:1">
+        <div><b>person #8842</b> · ${state.customer.phone}</div>
+        <div class="role">platform-global · deduplicated · ${enrols.length} enrolments across cafés</div>
+      </div>
+    </div>
+    <table style="margin-top:12px">
+      <thead><tr><th>Café (scope)</th><th>Name given</th><th>Stamps</th><th>Consent</th></tr></thead>
+      <tbody>${enrols.map(e=>`<tr><td>${e.cafe}</td><td>${e.name}</td><td>${e.stamps}</td><td><span class="tag ${e.consent==='active'?'redeem-t':'stamp-t'}">${e.consent}</span></td></tr>`).join('')}</tbody>
+    </table>
+    <div class="note">Each café sees only its own enrolment — never this cross-café view. Only the founder can, to action a PDPPL request.</div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn danger" onclick="erasePerson()">Anonymise person + all enrolments</button>
+      <button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" onclick="toast('Exported person data (mock)')">Export data (DSAR)</button>
+    </div>`;
+}
+function erasePerson(){
+  if(state.enrolled){ state.optedOut = true; renderStaff(); renderWA(); }
+  $('#personResult').innerHTML = `<p style="color:var(--ok);font-weight:600">✓ Person #8842 anonymised. Phone &amp; name cleared across all enrolments; stamp history retained as anonymous aggregate; messaging suppressed.</p>`;
+  state.audit.unshift({ t: now(), ev:'erasure (PDPPL)', scope:'all cafés', detail:'person #8842 anonymised' });
+  renderAudit();
+  toast('Person anonymised ✓');
+}
+
+function renderAudit(){
+  const tb = $('#auditTable'); if(!tb) return;
+  const cls = ev => ev.includes('opt-in')?'enrol-t' : ev.includes('opt-out')||ev.includes('erasure')?'stamp-t' : 'redeem-t';
+  tb.innerHTML = state.audit.map(r=>`<tr><td>${r.t}</td><td><span class="tag ${cls(r.ev)}">${r.ev}</span></td><td>${r.scope}</td><td class="muted">${r.detail}</td></tr>`).join('');
+}
+
+/* admin sub-tabs */
+function bindAdminTabs(){
+  const tabs = $('#adminTabs'); if(!tabs) return;
+  tabs.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    tabs.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    ['biz','people','audit'].forEach(t=> $('#atab-'+t).style.display = t===b.dataset.atab?'block':'none');
+  });
+}
+
+/* ====================== NAV / LANG ====================== */
+$('#nav').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.surface').forEach(s=>s.classList.remove('active'));
+  $('#s-'+b.dataset.surface).classList.add('active');
+});
+$('#langBtn').addEventListener('click', ()=>{
+  state.lang = state.lang==='en'?'ar':'en';
+  $('#langBtn').textContent = state.lang==='en' ? 'EN / ع' : 'ع / EN';
+  toast('Message language: '+(state.lang==='en'?'English-primary':'Arabic-primary'));
+});
+
+/* ====================== INIT ====================== */
+makeQR();
+renderStaff();
+renderWA();
+renderBizTable();
+renderAudit();
+bindAdminTabs();
+</script>
+</body>
+</html>

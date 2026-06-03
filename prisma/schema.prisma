@@ -1,0 +1,18 @@
+// Walking-skeleton schema. Real domain models (person, enrollment, business,
+// campaign, stamp_event, reward, staff, consent_log, message_log) arrive in
+// later slices (#2, #3, ...). For now, one trivial entity proves the path.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model HealthCheck {
+  id        String   @id @default(cuid())
+  label     String
+  createdAt DateTime @default(now())
+}
